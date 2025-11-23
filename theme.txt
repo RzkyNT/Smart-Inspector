@@ -1,0 +1,48 @@
+﻿∩╗┐
+1. Warna Aksen (Primary Colors)
+Ini adalah warna yang digunakan untuk tombol utama, judul, indikator aktif, dan elemen penting lainnya.
+
+Electric Cyan / WhatsApp Green (Utama): #25D366
+
+Variabel: --color-accent
+
+Soft Neon Green (Hover/Highlight): #2BE07B
+
+Variabel: --color-accent-alt
+
+Link Green (Untuk link): #1DA851
+
+Variabel: --color-link
+
+2. Warna Latar (Background & Surfaces)
+Ini adalah warna dasar gelap yang membangun nuansa Dark Mode.
+
+Dark Bluish Black (Latar Belakang Utama): #04070D
+
+Variabel: --color-bg
+
+Darker Panel (Latar Card/Panel): #0B0F14
+
+Variabel: --color-surface
+
+Lighter Surface (Input/Hover): #11161C
+
+Variabel: --color-surface-alt
+
+3. Warna Teks & Elemen Lain
+Teks Utama (Soft White): #F2F4F6
+
+Border Tipis (Glassmorphism): rgba(255,255,255,0.06)
+
+Ringkasan untuk Disalin
+Jika kamu ingin mengambil palet intinya saja untuk digunakan di tempat lain:
+
+CSS
+
+/* Palet Warna Utama */
+--primary: #25D366;       /* Hijau Cerah */
+--primary-hover: #2BE07B; /* Hijau Neon */
+--background: #04070D;    /* Hitam Kebiruan */
+--surface: #0B0F14;       /* Panel Gelap */
+--text: #F2F4F6;          /* Putih Lembut */
+

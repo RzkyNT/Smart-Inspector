@@ -1,0 +1,185 @@
+﻿<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smart Inspector Scraper</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Smart Inspector</p>
+          <h1>Scraper Workspace</h1>
+          <p class="current-url" id="currentUrl">-</p>
+        </div>
+        <div class="header-actions">
+          <label class="toggle">
+            <input type="checkbox" id="inspectorToggle" />
+            <span class="track">
+              <span class="thumb"></span>
+            </span>
+            <span>Inspector Mode</span>
+          </label>
+          <button id="runAutoSelector" class="btn primary">
+            <span>Scrape Now</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="panel" id="inspectorPanel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Manual Capture</p>
+            <h2>Inspector Mode</h2>
+          </div>
+          <button id="clearCaptures" class="btn ghost sm">Hapus</button>
+        </div>
+        <p class="panel-desc">
+          Aktifkan Inspector Mode, arahkan kursor ke elemen, klik, lalu beri nama field.
+          Data akan muncul di sini dan dapat dikonversi menjadi selector otomatis.
+        </p>
+        <div id="captureList" class="capture-list empty">
+          <p class="empty-state">Belum ada data yang diambil.</p>
+        </div>
+      </section>
+
+      <section class="panel" id="selectorPanel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Auto Selector</p>
+            <h2>Daftar Selector</h2>
+          </div>
+          <button id="addSelector" class="btn outline sm">Tambah Field</button>
+        </div>
+        <form id="selectorForm" class="selector-form">
+          <div class="grid">
+            <label>
+              <span>Nama Field</span>
+              <input name="name" placeholder="contoh: harga" required />
+            </label>
+            <label>
+              <span>CSS Selector</span>
+              <input name="selector" placeholder=".product-card .price" required />
+            </label>
+            <label>
+              <span>Tipe</span>
+              <select name="type">
+                <option value="auto">Auto</option>
+                <option value="text">Text</option>
+                <option value="html">HTML</option>
+                <option value="attribute">Attribute</option>
+              </select>
+            </label>
+            <label>
+              <span>Attribute</span>
+              <input name="attr" placeholder="href / src" />
+            </label>
+          </div>
+          <div class="checkbox-grid">
+            <label class="checkbox-inline">
+              <input type="checkbox" name="includeMeta" />
+              <span>Metadata (selector, xpath)</span>
+            </label>
+            <label class="checkbox-inline">
+              <input type="checkbox" name="includeOuter" />
+              <span>Ikutkan outerHTML</span>
+            </label>
+            <label class="checkbox-inline">
+              <input type="checkbox" name="autoScroll" />
+              <span>Auto scroll sebelum scrape</span>
+            </label>
+          </div>
+        </form>
+        <div id="selectorList" class="selector-list empty">
+          <p class="empty-state">Belum ada selector. Tambahkan manual atau konversi dari Inspector.</p>
+        </div>
+      </section>
+
+      <section class="panel" id="previewPanel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Preview</p>
+            <h2>Data Terkumpul</h2>
+          </div>
+          <div class="panel-actions">
+            <button class="btn ghost sm" id="refreshPreview">Refresh</button>
+            <button class="btn outline sm" id="copyPreview">Copy JSON</button>
+          </div>
+        </div>
+        <div class="summary" id="summaryStrip"></div>
+        <div class="table-wrapper" id="previewTable">
+          <p class="empty-state">Belum ada data. Jalankan Scrape Now untuk melihat preview.</p>
+        </div>
+      </section>
+
+      <section class="panel" id="exportPanel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Export & Template</p>
+            <h2>Kelola Output</h2>
+          </div>
+        </div>
+        <div class="export-grid">
+          <div>
+            <h3>Export</h3>
+            <div class="btn-group">
+              <button class="btn primary sm" data-export="json">Download JSON</button>
+              <button class="btn outline sm" data-export="csv">Download CSV</button>
+              <button class="btn ghost sm" data-export="clipboard">Copy ke Clipboard</button>
+            </div>
+            <label class="stack">
+              <span>Webhook URL</span>
+              <input id="webhookInput" placeholder="https://example.com/webhook" />
+            </label>
+            <button class="btn outline sm" id="sendWebhook">Kirim ke API</button>
+          </div>
+          <div>
+            <h3>Template</h3>
+            <label class="stack">
+              <span>Nama Template</span>
+              <input id="templateName" placeholder="contoh: listing toko" />
+            </label>
+            <button class="btn primary sm" id="saveTemplate">Simpan Template</button>
+            <label class="checkbox mt">
+              <input type="checkbox" id="templateSync" />
+              <span>Sync template via Chrome (beta)</span>
+            </label>
+            <div class="template-list" id="templateList"></div>
+          </div>
+          <div>
+            <h3>Pagination & Scroll</h3>
+            <label class="stack">
+              <span>Selector Tombol Next</span>
+              <input id="paginationSelector" placeholder=".pagination .next" />
+            </label>
+            <div class="btn-group">
+              <button class="btn outline sm" id="triggerPagination">Klik Next</button>
+              <button class="btn ghost sm" id="autoPagination">Auto Crawl</button>
+            </div>
+            <label class="stack">
+              <span>Infinite Scroll (step x delay ms)</span>
+              <input id="scrollSteps" type="number" min="1" value="5" />
+              <input id="scrollDelay" type="number" min="200" value="1200" />
+            </label>
+            <button class="btn outline sm" id="runAutoScroll">Auto Scroll</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="logPanel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Activity</p>
+            <h2>Log</h2>
+          </div>
+          <button class="btn ghost sm" id="clearLog">Clear</button>
+        </div>
+        <div id="logList" class="log-list"></div>
+      </section>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
