@@ -1,4 +1,4 @@
-﻿import { COLORS, readState, writeState, appendLog, formatDate, showToast, downloadFile, toCSV, copyToClipboard } from "./utils.js";
+﻿import { COLORS, readState, writeState, appendLog, formatDate, showToast, downloadFile, toCSV, copyToClipboard, wait } from "./utils.js";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -11,6 +11,15 @@ const appState = {
   summary: [],
   templates: [],
   inspectorSyncing: false,
+  autoPagination: {
+    active: false,
+    selector: "",
+    page: 0,
+    maxPages: 0,
+    delay: 0,
+    rows: [],
+    summaries: new Map(),
+  },
 };
 
 async function init() {
@@ -58,9 +67,10 @@ function wireEvents() {
   $("#sendWebhook").addEventListener("click", onSendWebhook);
   $("#saveTemplate").addEventListener("click", onSaveTemplate);
   $("#triggerPagination").addEventListener("click", () => triggerPagination());
-  $("#autoPagination").addEventListener("click", () => triggerPagination(true));
+  $("#autoPagination").addEventListener("click", onAutoPagination);
   $("#runAutoScroll").addEventListener("click", onAutoScroll);
   $("#clearLog").addEventListener("click", clearLog);
+  setAutoPaginationUI(false);
 }
 
 async function setCurrentTabUrl() {
@@ -207,33 +217,27 @@ function renderSummary() {
 }
 
 function sendToContent(message) {
-  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-    if (!tab?.id) return;
-    chrome.tabs.sendMessage(tab.id, message, (response) => {
-      if (chrome.runtime.lastError) {
-        showToast("Tab belum siap", "warning");
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      if (!tab?.id) {
+        resolve({ ok: false, error: "TAB_NOT_FOUND" });
         return;
       }
-      return response;
+      chrome.tabs.sendMessage(tab.id, message, (response) => {
+        if (chrome.runtime.lastError) {
+          showToast("Tab belum siap", "warning");
+          resolve({ ok: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+        resolve(response ?? { ok: true });
+      });
     });
   });
 }
 
 function onRunAutoSelector() {
-  if (!appState.selectors.length) {
-    showToast("Tambahkan minimal 1 selector", "warning");
-    return;
-  }
-  sendToContent({
-    type: "autoSelector:run",
-    payload: {
-      selectors: appState.selectors,
-      options: {
-        includeMeta: document.querySelector("input[name='includeMeta']").checked,
-        includeOuter: document.querySelector("input[name='includeOuter']").checked,
-      },
-    },
-  });
+  if (!ensureSelectors()) return;
+  requestAutoSelectorRun();
   appendLog({ type: "auto", message: `Scrape ${appState.selectors.length} field` });
 }
 
@@ -241,10 +245,7 @@ function listenMessages() {
   chrome.runtime.onMessage.addListener((message) => {
     switch (message.type) {
       case "inspector:capture":
-        appState.captures.unshift(message.payload);
-        appState.captures = appState.captures.slice(0, 50);
-        writeState({ captures: appState.captures });
-        renderCaptures();
+        hydrateCaptures();
         appendLog({ type: "inspector", message: `Capture ${message.payload.customName}` });
         syncInspectorToggle(false);
         break;
@@ -252,15 +253,37 @@ function listenMessages() {
         syncInspectorToggle(Boolean(message.payload?.enabled));
         break;
       case "autoSelector:result":
-        appState.previewRows = message.payload.rows;
-        appState.summary = message.payload.summary;
-        renderPreview();
-        renderSummary();
-        appendLog({ type: "auto", message: `Scrape menghasilkan ${message.payload.rows.length} baris` });
+        if (appState.autoPagination.active) {
+          handleAutoPaginationResult(message.payload);
+        } else {
+          appState.previewRows = message.payload.rows;
+          appState.summary = message.payload.summary;
+          renderPreview();
+          renderSummary();
+          appendLog({
+            type: "auto",
+            message: `Scrape menghasilkan ${message.payload.rows.length} baris`,
+          });
+        }
         break;
       case "content:ready":
         setCurrentTabUrl();
         pingInspectorState();
+        break;
+      case "pagination:error":
+        showToast("Selector pagination tidak ditemukan", "error");
+        finishAutoPagination("Selector pagination tidak ditemukan");
+        break;
+      case "pagination:clicked":
+        if (appState.autoPagination.active) {
+          appendLog({
+            type: "pagination",
+            message: `Klik pagination (${message.payload?.selector})`,
+          });
+        }
+        break;
+      case "autoPagination:finished":
+        finishAutoPagination(message.payload?.reason || "Selesai");
         break;
       default:
         break;
@@ -356,6 +379,13 @@ function hydrateLog() {
     const list = document.getElementById("logList");
     list.innerHTML = "";
     logs.forEach((entry) => list.appendChild(renderLogItem(entry)));
+  });
+}
+
+function hydrateCaptures() {
+  chrome.storage.local.get({ captures: [] }, ({ captures }) => {
+    appState.captures = captures;
+    renderCaptures();
   });
 }
 

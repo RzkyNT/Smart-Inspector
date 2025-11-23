@@ -154,6 +154,16 @@
               <span>Selector Tombol Next</span>
               <input id="paginationSelector" placeholder=".pagination .next" />
             </label>
+            <div class="grid two">
+              <label class="stack">
+                <span>Batas Halaman</span>
+                <input id="paginationLimit" type="number" min="1" value="5" />
+              </label>
+              <label class="stack">
+                <span>Delay (ms)</span>
+                <input id="paginationDelay" type="number" min="200" value="2000" />
+              </label>
+            </div>
             <div class="btn-group">
               <button class="btn outline sm" id="triggerPagination">Klik Next</button>
               <button class="btn ghost sm" id="autoPagination">Auto Crawl</button>

@@ -72,7 +72,7 @@
     tooltip.innerHTML = `
       <header>
         <strong>Labelkan elemen</strong>
-        <button type="button" class="sis-close" data-action="close">×</button>
+        <button type="button" class="sis-close" data-action="close">?</button>
       </header>
       <form>
         <label>
@@ -467,3 +467,4 @@
 
   sendToPopup({ type: "content:ready", payload: { url: location.href } });
 })();
+
