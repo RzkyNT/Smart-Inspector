@@ -1,5 +1,0 @@
-﻿
-C:\laragon\www\wa-ext\inspect
-Error
-Could not load file 'content/content.js' for content script. It isn't UTF-8 encoded.
-Could not load manifest.
