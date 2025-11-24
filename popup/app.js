@@ -75,8 +75,10 @@ function wireEvents() {
 
 async function setCurrentTabUrl() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  console.log("popup/app.js: setCurrentTabUrl - Active tab:", tab);
   appState.currentUrl = tab?.url || "";
   $("#currentUrl").textContent = appState.currentUrl.replace(/^https?:\/\//, "");
+  console.log("popup/app.js: setCurrentTabUrl - Current URL set to:", appState.currentUrl);
 }
 
 function addSelectorRow(formData) {
@@ -138,9 +140,11 @@ function renderCaptures() {
   if (!appState.captures.length) {
     container.classList.add("empty");
     container.innerHTML = '<p class="empty-state">Belum ada data yang diambil.</p>';
+    console.log("popup/app.js: renderCaptures - No captures to render. appState.captures:", appState.captures);
     return;
   }
   container.classList.remove("empty");
+  console.log("popup/app.js: renderCaptures - Rendering captures. appState.captures:", appState.captures);
   appState.captures.forEach((item, index) => {
     const card = document.createElement("article");
     card.className = "capture-card";
@@ -235,14 +239,72 @@ function sendToContent(message) {
   });
 }
 
+// New definition for requestAutoSelectorRun
+async function requestAutoSelectorRun() {
+  const options = {
+    includeMeta: $("#selectorForm input[name='includeMeta']").checked,
+    includeOuter: $("#selectorForm input[name='includeOuter']").checked,
+  };
+  const result = await sendToContent({
+    type: "autoSelector:run",
+    payload: { selectors: appState.selectors, options },
+  });
+  if (!result?.ok) {
+    showToast(`Scrape Gagal: ${result?.error || "Unknown error"}`, "error");
+  } else {
+    showToast(`Scrape berhasil: ${result.rows} baris ditemukan`, "success");
+  }
+}
+
+function ensureSelectors() {
+  if (!appState.selectors.length) {
+    showToast("Tambahkan setidaknya satu selector dulu.", "warning");
+    return false;
+  }
+  return true;
+}
+
 function onRunAutoSelector() {
   if (!ensureSelectors()) return;
   requestAutoSelectorRun();
   appendLog({ type: "auto", message: `Scrape ${appState.selectors.length} field` });
 }
 
+
+async function onAutoPagination() {
+  const paginationSelector = $("#paginationSelector").value.trim();
+  const paginationLimit = Number($("#paginationLimit").value);
+  const paginationDelay = Number($("#paginationDelay").value);
+
+  if (!paginationSelector) {
+    showToast("Isi selector pagination", "warning");
+    return;
+  }
+  if (!ensureSelectors()) return;
+
+  appState.autoPagination = {
+    active: true,
+    selector: paginationSelector,
+    page: 0,
+    maxPages: paginationLimit,
+    delay: paginationDelay,
+    rows: [],
+    summaries: new Map(),
+  };
+
+  setAutoPaginationUI(true);
+  appendLog({
+    type: "pagination",
+    message: `Memulai auto crawl hingga ${paginationLimit} halaman dengan selector ${paginationSelector}`,
+  });
+  await triggerPagination(true); // Trigger first page
+
+  // The rest of auto-pagination logic will be handled by listenMessages
+}
+
 function listenMessages() {
   chrome.runtime.onMessage.addListener((message) => {
+    console.log("popup/app.js: Received message:", message);
     switch (message.type) {
       case "inspector:capture":
         hydrateCaptures();
@@ -385,6 +447,7 @@ function hydrateLog() {
 function hydrateCaptures() {
   chrome.storage.local.get({ captures: [] }, ({ captures }) => {
     appState.captures = captures;
+    console.log("popup/app.js: hydrateCaptures - Fetched captures from storage:", captures);
     renderCaptures();
   });
 }
@@ -433,11 +496,20 @@ async function onAutoScroll() {
 
 function pingInspectorState() {
   chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-    if (!tab?.id) return;
+    if (!tab?.id) {
+      console.warn("popup/app.js: pingInspectorState - No active tab found.");
+      return;
+    }
+    console.log("popup/app.js: pingInspectorState - Sending 'inspector:state' message to tab:", tab.id);
     chrome.tabs.sendMessage(tab.id, { type: "inspector:state" }, (response) => {
-      if (chrome.runtime.lastError) return;
+      if (chrome.runtime.lastError) {
+        console.error("popup/app.js: pingInspectorState - Error receiving response from content script:", chrome.runtime.lastError.message);
+        return;
+      }
+      console.log("popup/app.js: pingInspectorState - Received response from content script:", response);
       if (response && typeof response.enabled === "boolean") {
         syncInspectorToggle(response.enabled);
+        console.log("popup/app.js: pingInspectorState - Synced inspector toggle to:", response.enabled);
       }
     });
   });
@@ -451,6 +523,18 @@ function syncInspectorToggle(enabled) {
   requestAnimationFrame(() => {
     appState.inspectorSyncing = false;
   });
+}
+
+// New definition for setAutoPaginationUI
+function setAutoPaginationUI(active) {
+  const btn = $("#autoPagination");
+  if (active) {
+    btn.classList.add("active");
+    btn.textContent = `Menghentikan... (${appState.autoPagination.page}/${appState.autoPagination.maxPages})`;
+  } else {
+    btn.classList.remove("active");
+    btn.textContent = "Auto Crawl";
+  }
 }
 
 init();

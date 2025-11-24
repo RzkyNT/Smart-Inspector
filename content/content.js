@@ -22,6 +22,7 @@
 
   function sendToPopup(message) {
     try {
+      console.log("content.js: sendToPopup - Sending message:", message);
       chrome.runtime.sendMessage({
         source: "smart-inspector:content",
         ...message,
@@ -107,6 +108,7 @@
     tooltip.addEventListener("click", (event) => {
       if (event.target.closest("[data-action='cancel']")) {
         event.preventDefault();
+        console.log("content.js: Tooltip cancel button clicked.");
         closeTooltip(true);
         return;
       }
@@ -162,9 +164,13 @@
 
   function onTooltipSubmit(event) {
     event.preventDefault();
+    console.log("content.js: onTooltipSubmit - Form submitted.");
     const form = event.target;
     const name = form.fieldName.value.trim();
-    if (!name || !state.tooltipTarget) return;
+    if (!name || !state.tooltipTarget) {
+      console.log("content.js: onTooltipSubmit - Invalid name or no tooltip target. Name:", name, "Tooltip Target:", state.tooltipTarget);
+      return;
+    }
     const type = form.fieldType.value;
     const attr = form.fieldAttr.value.trim();
     const data = collectElementData(state.tooltipTarget, {
@@ -172,6 +178,7 @@
       type: type === "auto" ? undefined : type,
       attr: attr || undefined,
     });
+    console.log("content.js: onTooltipSubmit - Data collected:", data);
     sendToPopup({ type: "inspector:capture", payload: data });
     closeTooltip(true);
   }
@@ -222,19 +229,23 @@
   }
 
   function onClick(event) {
+    console.log("content.js: onClick - Event target:", event.target, "inspectorEnabled:", state.inspectorEnabled, "awaitingLabel:", state.awaitingLabel);
     if (!state.inspectorEnabled) return;
     if (!(event.target instanceof Element)) return;
     if (state.awaitingLabel) {
       if (!(state.tooltip && state.tooltip.contains(event.target))) {
+        console.log("content.js: onClick - Click outside tooltip while awaiting label, closing tooltip.");
         closeTooltip(true);
+      } else {
+        console.log("content.js: onClick - Click inside tooltip while awaiting label. Allowing event to propagate to tooltip's listeners.");
+        // Allow event to propagate to tooltip's own listeners for buttons
+        return;
       }
-      event.preventDefault();
+      event.preventDefault(); // Prevent default if click was outside the tooltip
       event.stopPropagation();
       return;
     }
-    if (state.tooltip && state.tooltip.contains(event.target)) {
-      return;
-    }
+    // Original logic to open tooltip on click if not awaiting label
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
